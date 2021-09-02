@@ -3,15 +3,18 @@ const mongodb = require("mongodb");
 const ObjectId = mongodb.ObjectId;
 require("dotenv").config();
 
+//HgXR9hN8AHHR3en1
+
 (async () => {
-	const dbHost = process.env.DB_HOST;
-	const dbPort = process.env.DB_PORT;
+	const dbUser = process.env.DB_USER;
+	const dbPassword = process.env.DB_PASSWORD;
 	const dbName = process.env.DB_NAME;
 
 	const app = express();
 	app.use(express.json());
+
 	const port = process.env.PORT || 3000;
-	const connectionString = `mongodb://${dbHost}:${dbPort}/${dbName}`;
+	const connectionString = `mongodb+srv://${dbUser}:${dbPassword}@cluster0.z7qeo.mongodb.net/${dbName}?retryWrites=true&w=majority`;
 
 	const options = {
 		useUnifiedTopology: true,
@@ -26,6 +29,8 @@ require("dotenv").config();
 
 	const getPersonagemById = async (id) =>
 		personagens.findOne({ _id: ObjectId(id) });
+
+	//CORS	
 
 	app.all("/*", (req, res, next) => {
 		res.header("Access-Control-Allow-Origin", "*");
@@ -58,17 +63,25 @@ require("dotenv").config();
 		res.send(personagem);
 	});
 
+	//[POST] Adicona personagem
+
 	app.post("/personagens", async (req, res) => {
 		const objeto = req.body;
 
 		if (!objeto || !objeto.nome || !objeto.imagemUrl) {
-			res.send("Objeto invalido");
+			res.send(
+				"Requisição inválida, certifique-se que tenha os campos nome e imagemUrl"
+			);
 			return;
 		}
 
-		const insertCount = await personagens.insertOne(objeto);
-		console.log(insertCount);
-		if (!insertCount) {
+		const result = await personagens.insertOne(objeto);
+
+		console.log(result);
+
+		//Se ocorrer algum erro com o mongoDb esse if vai detectar
+
+		if (result.acknowledged == false) {
 			res.send("Ocorreu um erro");
 			return;
 		}
@@ -76,29 +89,80 @@ require("dotenv").config();
 		res.send(objeto);
 	});
 
+	//[PUT] Atualizar personagem
+
 	app.put("/personagens/:id", async (req, res) => {
 		const id = req.params.id;
 		const objeto = req.body;
-		res.send(
-			await personagens.updateOne(
-				{
-					_id: ObjectId(id),
-				},
-				{
-					$set: objeto,
-				}
-			)
+
+		if (!objeto || !objeto.nome || !objeto.imagemUrl) {
+			res.send(
+				"Requisição inválida, certifique-se que tenha os campos nome e imagemUrl"
+			);
+			return;
+		}
+
+		const quantidadePersonagens = await personagens.countDocuments({
+			_id: ObjectId(id),
+		});
+
+		if (quantidadePersonagens !== 1) {
+			res.send("Personagem não encontrado");
+			return;
+		}
+
+		const result = await personagens.updateOne(
+			{
+				_id: ObjectId(id),
+			},
+			{
+				$set: objeto,
+			}
 		);
+
+		//console.log(result);
+
+		//Se acontecer algum erro no MongoDb, cai na seguinte valiadação
+
+		if (result.modifiedCount !== 1) {
+			res.send("Ocorreu um erro ao atualizar o personagem");
+			return;
+		}
+		res.send(await getPersonagemById(id));
 	});
+
+	//[DELETE] Deleta um personagem
 
 	app.delete("/personagens/:id", async (req, res) => {
 		const id = req.params.id;
 
-		res.send(
-			await personagens.deleteOne({
-				_id: ObjectId(id),
-			})
-		);
+		//Retorna a quantidade de personagens com o filtro(Id) especificado
+
+		const quantidadePersonagens = await personagens.countDocuments({
+			_id: ObjectId(id),
+		});
+
+		//Checar se existe o personagem solicitado
+
+		if (quantidadePersonagens !== 1) {
+			res.send("Personagem não encontrao");
+			return;
+		}
+
+		//Deletar personagem
+
+		const result = await personagens.deleteOne({
+			_id: ObjectId(id),
+		});
+
+		//Se não con
+		
+		if (result.deletedCount !== 1) {
+			res.send("Ocorreu um erro ao remover o personagem");
+			return;
+		}
+
+		res.send("Personagem removido com sucesso!");
 	});
 
 	app.listen(port, () => {
