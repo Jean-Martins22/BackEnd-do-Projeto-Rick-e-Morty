@@ -4,6 +4,10 @@ const ObjectId = mongodb.ObjectId;
 require("dotenv").config();
 require("express-async-errors");
 
+//requires de endpoints
+
+const home = require("./components/home/home");
+
 //HgXR9hN8AHHR3en1
 
 (async () => {
@@ -21,7 +25,11 @@ require("express-async-errors");
     useUnifiedTopology: true,
   };
 
+  console.info("Conectando ao MongoDB Atlas...");
+
   const client = await mongodb.MongoClient.connect(connectionString, options);
+
+  console.info("Conexão estabelecida com o MongoDB Atlas!");
 
   const db = client.db("blue_db");
   const personagens = db.collection("personagens");
@@ -46,9 +54,9 @@ require("express-async-errors");
     next();
   });
 
-  app.get("/", (req, res) => {
-    res.send({ info: "Olá, Blue" });
-  });
+//Criando a rota Home
+
+app.use("/home", home);
 
   //[GET] GetAllPersonagens
 
@@ -198,6 +206,6 @@ require("express-async-errors");
     });
   });
   app.listen(port, () => {
-    console.info(`App rodando em http://localhost:${port}`);
+    console.info(`App rodando em http://localhost:${port}/home`);
   });
 })();
